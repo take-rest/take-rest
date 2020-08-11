@@ -1,0 +1,35 @@
+{
+  "name": "take-rest",
+  "version": "1.0.0",
+  "description": "A custom REST API creator...",
+  "main": "index.js",
+  "scripts": {
+    "build": "node server/index.js",
+    "dev": "nodemon server/index.js",
+    "test": "jest --forceExit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/take-rest/take-rest.git"
+  },
+  "keywords": [
+    "rest",
+    "rest-api",
+    "take-rest"
+  ],
+  "author": "Bijayee Saswata Pradhan",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/take-rest/take-rest/issues"
+  },
+  "homepage": "https://github.com/take-rest/take-rest#readme",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1"
+  },
+  "devDependencies": {
+    "jest": "^26.3.0",
+    "nodemon": "^2.0.4",
+    "supertest": "^4.0.2"
+  }
+}
