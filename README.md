@@ -4,4 +4,4 @@ A node package to create custom REST API
 
 ### Build Status
 
-![](https://github.com/<Github take-rest>/<repo take-rest>/workflows/<workflow Node.js CI>/badge.svg)
+![](https://github.com/take-rest/take-rest/workflows/Node.js%20CI/badge.svg)
