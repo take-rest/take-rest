@@ -4,7 +4,7 @@
   "description": "A custom REST API creator...",
   "main": "index.js",
   "scripts": {
-    "build": "node server/index.js",
+    "start": "node server/index.js",
     "dev": "nodemon server/index.js",
     "test": "jest --forceExit"
   },
