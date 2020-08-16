@@ -2,8 +2,6 @@ const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
 const router = express.Router();
 
-let tableName = "";
-
 if (process.env.NODE_ENV === "test") {
   db = new sqlite3.Database(":memory:");
 } else {
@@ -13,7 +11,6 @@ if (process.env.NODE_ENV === "test") {
 router.post("/schema", (req, res) => {
   const schema = req.body;
   let tableParams = "";
-  tableName = schema.schemaName;
 
   for (let key in schema.schemaBody) {
     if (schema.schemaBody.hasOwnProperty(key)) {
@@ -32,7 +29,7 @@ router.post("/schema", (req, res) => {
   tableParams = tableParams.slice(0, -1);
 
   db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS ${tableName} (${tableParams})`);
+    db.run(`CREATE TABLE IF NOT EXISTS ${schema.schemaName} (${tableParams})`);
   });
 
   res.status(200).json({
@@ -40,42 +37,123 @@ router.post("/schema", (req, res) => {
   });
 });
 
-router.get("/", (req, res) => {
-  db.serialize(() => {
-    db.all(`SELECT * FROM ${tableName}`, [], (err, rows) => {
-      res.json(rows);
+//get all data from db
+router.get("/*", (req, res) => {
+  const tableName = getTableName(req.path);
+
+  if (tableName.length > 0) {
+    tableExist(tableName, (tableExistResponse) => {
+      if (tableExistResponse) {
+        db.serialize((err) => {
+          db.all(`SELECT * FROM ${tableName}`, [], (err, rows) => {
+            res.json(rows);
+          });
+        });
+      } else {
+        res.json({
+          message: "No schema exist...",
+        });
+      }
     });
-  });
+  } else {
+    res.json({
+      message:
+        "Opps..looks like you have not attached any schema name. Request with api/schemaName",
+    });
+  }
 });
 
-router.post("/", (req, res) => {
-  const body = req.body;
+//Insert element to db
+router.post("/*", (req, res) => {
+  const tableName = getTableName(req.path);
+  if (tableName.length > 0) {
+    tableExist(tableName, (tableExistResponse) => {
+      if (tableExistResponse) {
+        const body = req.body;
 
-  const keys = Object.keys(body);
-  const values = Object.values(body);
+        const keys = Object.keys(body);
+        const values = Object.values(body);
 
-  let insertParams = keys.map((key) => `${key}`).join(",");
-  let insertValues = values.map((value) => "?").join(",");
+        let insertParams = keys.map((key) => `${key}`).join(",");
+        let insertValues = values.map((value) => "?").join(",");
 
-  let sql = `INSERT INTO ${tableName} (${insertParams}) VALUES (${insertValues})`;
+        let sql = `INSERT INTO ${tableName} (${insertParams}) VALUES (${insertValues})`;
 
-  db.run(sql, values, function (err) {
+        db.run(sql, values, (err) => {
+          if (err) {
+            res.json(err.message);
+          }
+          res.json({
+            message: "Inserted successfully...",
+            date: req.body,
+          });
+        });
+      } else {
+        res.json({
+          message: "No schema exist...",
+        });
+      }
+    });
+  } else {
+    res.json({
+      message:
+        "Opps..looks like you have not attached any schema name. Request with api/schemaName",
+    });
+  }
+});
+
+//delete with query id
+router.delete("/*?:id", (req, res) => {
+  const tableName = getTableName(req.path);
+
+  if (tableName.length > 0) {
+    tableExist(tableName, (tableExistResponse) => {
+      if (tableExistResponse) {
+        const { id } = req.query;
+
+        const sql = `DELETE FROM ${tableName} WHERE id = ?`;
+        console.log(sql);
+
+        db.run(sql, id, (err) => {
+          if (err) {
+            res.json(err.message);
+            return false;
+          }
+          res.json({
+            message: `Successfully deleted record with id: ${id}`,
+          });
+        });
+      } else {
+        res.json({
+          message: "No schema exist...",
+        });
+      }
+    });
+  } else {
+    res.json({
+      message:
+        "Opps..looks like you have not attached any schema name. Request with api/schemaName",
+    });
+  }
+});
+
+//get table name
+const getTableName = (urlPath) => {
+  return urlPath.split("/").filter(function (el) {
+    return el != "";
+  });
+};
+
+// check table exist or not
+const tableExist = (tableName, callback) => {
+  const sql = `SELECT name FROM sqlite_master WHERE type='table' AND name=?`;
+  db.get(sql, tableName, (err, row) => {
     if (err) {
-      res.json(err.message);
-    }
-    res.json(`Rows inserted ${this.changes}`);
+      console.log(err);
+      return callback(false);
+    } else if (row) return callback(true);
+    else return callback(false);
   });
-});
-
-router.delete("/:id", (req, res) => {
-  const { id } = req.params;
-
-  db.serialize(() => {
-    const stmt = db.prepare("DELETE FROM users WHERE id = ?");
-    stmt.run(id);
-    stmt.finalize();
-    res.json(req.body);
-  });
-});
+};
 
 module.exports = router;
