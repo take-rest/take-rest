@@ -19,6 +19,8 @@ router.post("/schema", (req, res) => {
         val = `${schema.schemaBody[key]} PRIMARY KEY AUTOINCREMENT`;
       } else if (schema.schemaBody[key].toUpperCase() === "DATETIME") {
         val = `${schema.schemaBody[key]} DEFAULT CURRENT_TIMESTAMP`;
+      } else if (schema.schemaBody[key].toUpperCase() === "DATE") {
+        val = `${schema.schemaBody[key]} DEFAULT CURRENT_DATE`;
       } else {
         val = schema.schemaBody[key];
       }
@@ -29,24 +31,50 @@ router.post("/schema", (req, res) => {
   tableParams = tableParams.slice(0, -1);
 
   db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS ${schema.schemaName} (${tableParams})`);
-  });
-
-  res.status(200).json({
-    message: "Schema created successfully...",
+    db.run(
+      `CREATE TABLE IF NOT EXISTS ${schema.schemaName} (${tableParams})`,
+      [],
+      (err) => {
+        if (err) {
+          res.status(500).json({
+            message: err.message,
+          });
+          return false;
+        }
+        res.status(200).json({
+          message: "Schema created successfully...",
+          data: schema.schemaBody,
+        });
+      }
+    );
   });
 });
 
-//get all data from db
-router.get("/*", (req, res) => {
+//get perticular data or all data
+router.get("/*?:id", (req, res) => {
   const tableName = getTableName(req.path);
-
+  const { id } = req.query;
   if (tableName.length > 0) {
     tableExist(tableName, (tableExistResponse) => {
-      if (tableExistResponse) {
+      if (tableExistResponse && id) {
+        let sql = `SELECT * FROM ${tableName} WHERE id = ?`;
+        db.get(sql, id, (err, row) => {
+          if (err) {
+            res.json(err.message);
+            return false;
+          }
+          return row
+            ? res.json(row)
+            : res.json(`No document found with the id ${id}`);
+        });
+      } else if (tableExistResponse) {
         db.serialize((err) => {
           db.all(`SELECT * FROM ${tableName}`, [], (err, rows) => {
-            res.json(rows);
+            if (err) {
+              res.json(err.message);
+              return false;
+            }
+            return res.json(rows);
           });
         });
       } else {
@@ -82,10 +110,51 @@ router.post("/*", (req, res) => {
         db.run(sql, values, (err) => {
           if (err) {
             res.json(err.message);
+            return false;
           }
           res.json({
             message: "Inserted successfully...",
-            date: req.body,
+            data: req.body,
+          });
+        });
+      } else {
+        res.json({
+          message: "No schema exist...",
+        });
+      }
+    });
+  } else {
+    res.json({
+      message:
+        "Opps..looks like you have not attached any schema name. Request with api/schemaName",
+    });
+  }
+});
+
+//update data
+router.put("/*?:id", (req, res) => {
+  const tableName = getTableName(req.path);
+
+  if (tableName.length > 0) {
+    tableExist(tableName, (tableExistResponse) => {
+      if (tableExistResponse) {
+        const { id } = req.query;
+        const body = req.body;
+
+        const keys = Object.keys(body);
+        const values = Object.values(body);
+
+        let params = keys.map((key) => `${key}=?`);
+
+        const sql = `UPDATE ${tableName} SET ${params} WHERE id = ${id}`;
+
+        db.run(sql, values, (err) => {
+          if (err) {
+            res.json(err.message);
+            return false;
+          }
+          res.json({
+            message: `Successfully updated record with id: ${id}`,
           });
         });
       } else {
@@ -112,7 +181,6 @@ router.delete("/*?:id", (req, res) => {
         const { id } = req.query;
 
         const sql = `DELETE FROM ${tableName} WHERE id = ?`;
-        console.log(sql);
 
         db.run(sql, id, (err) => {
           if (err) {
@@ -149,7 +217,7 @@ const tableExist = (tableName, callback) => {
   const sql = `SELECT name FROM sqlite_master WHERE type='table' AND name=?`;
   db.get(sql, tableName, (err, row) => {
     if (err) {
-      console.log(err);
+      console.error(err);
       return callback(false);
     } else if (row) return callback(true);
     else return callback(false);
