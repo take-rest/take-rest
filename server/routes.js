@@ -8,6 +8,33 @@ if (process.env.NODE_ENV === "test") {
   db = new sqlite3.Database("db.sqlite");
 }
 
+router.get("/schema", (req, res) => {
+  const sql = `SELECT name FROM sqlite_master WHERE type='table'`;
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      res.status(500).json({
+        message: err.message,
+      });
+      return false;
+    }
+    res.status(200).json(rows);
+  });
+});
+
+router.get("/schema/*", (req, res) => {
+  const tableName = req.path.slice(8).replace("/", "");
+  const sql = `pragma table_info(${tableName})`;
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      res.status(500).json({
+        message: err.message,
+      });
+      return false;
+    }
+    res.status(200).json(rows);
+  });
+});
+
 router.post("/schema", (req, res) => {
   const schema = req.body;
   let tableParams = "";
@@ -21,6 +48,8 @@ router.post("/schema", (req, res) => {
         val = `${schema.schemaBody[key]} DEFAULT CURRENT_TIMESTAMP`;
       } else if (schema.schemaBody[key].toUpperCase() === "DATE") {
         val = `${schema.schemaBody[key]} DEFAULT CURRENT_DATE`;
+      } else if (schema.schemaBody[key].toUpperCase() === "TIME") {
+        val = `${schema.schemaBody[key]} DEFAULT CURRENT_TIME`;
       } else {
         val = schema.schemaBody[key];
       }
@@ -60,7 +89,7 @@ router.get("/*?:id", (req, res) => {
         let sql = `SELECT * FROM ${tableName} WHERE id = ?`;
         db.get(sql, id, (err, row) => {
           if (err) {
-            res.json(err.message);
+            res.status(500).json(err.message);
             return false;
           }
           return row
@@ -71,7 +100,7 @@ router.get("/*?:id", (req, res) => {
         db.serialize((err) => {
           db.all(`SELECT * FROM ${tableName}`, [], (err, rows) => {
             if (err) {
-              res.json(err.message);
+              res.status(500).json(err.message);
               return false;
             }
             return res.json(rows);

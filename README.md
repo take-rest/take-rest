@@ -60,3 +60,22 @@ headers: { "content-type": "application/json" }
 ```
 
 ## API
+
+```json
+{
+  "schemaName": "your schema name without spaces",
+  "schemaBody": {
+    "message": "your schema body without nested json objects"
+  }
+}
+```
+
+## Data Types
+
+- Integer
+- Float
+- Double
+- Text
+- Date
+- Time
+- DateTime

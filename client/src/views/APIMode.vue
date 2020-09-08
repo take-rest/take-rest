@@ -6,18 +6,9 @@
           v-for="option in options"
           v-bind:value="option.value"
           :key="option.text"
-        >
-          {{ option.text }}
-        </option>
+        >{{ option.text }}</option>
       </select>
-      <input
-        type="text"
-        name="url"
-        placeholder="URL"
-        v-model="url"
-        required
-        autocomplete="on"
-      />
+      <input type="text" name="url" placeholder="URL" v-model="url" required autocomplete="on" />
       <button @click="sendRequest">send</button>
     </div>
     <div class="inputBody" v-if="selected === 'POST' || selected === 'PUT'">
@@ -32,6 +23,7 @@
       ></editor>
     </div>
     <div class="outputBody">
+      <span v-if="outputBody">{{`Status: ${status}`}}</span>
       <OutputComponent :content="outputBody" />
     </div>
   </div>
@@ -51,6 +43,7 @@ export default {
       selected: "GET",
       url: "",
       inputBody: "",
+      status: null,
       options: [
         { text: "GET", value: "GET" },
         { text: "POST", value: "POST" },
@@ -61,7 +54,7 @@ export default {
     };
   },
   methods: {
-    editorInit: function() {
+    editorInit: function () {
       require("brace/ext/language_tools"); //language extension prerequsite...
       require("brace/mode/json");
       require("brace/theme/chrome");
@@ -75,10 +68,13 @@ export default {
         data: this.inputBody,
       })
         .then((response) => {
+          this.status = `${response.status} ${response.statusText}`;
           let prettyJson = JSON.stringify(response.data, undefined, 4);
           this.outputBody = prettyJson;
         })
         .catch((error) => {
+          // this.status = `${response.status} ${response.statusText}`;
+          console.log(error);
           this.outputBody = error.message;
         });
     },
@@ -88,6 +84,7 @@ export default {
 
 <style lang="scss" scoped>
 .api {
+  position: relative;
   width: 80%;
   margin: 0 auto;
   .header {
@@ -114,6 +111,16 @@ export default {
   }
   .inputBody {
     margin: 1em 0;
+  }
+  .outputBody {
+    position: relative;
+    span {
+      position: absolute;
+      top: 50px;
+      right: 20px;
+      z-index: 1;
+      color: green;
+    }
   }
 }
 </style>
